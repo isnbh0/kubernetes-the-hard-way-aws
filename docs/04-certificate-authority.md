@@ -8,7 +8,7 @@ In this section you will provision a Certificate Authority that can be used to g
 
 Generate the CA configuration file, certificate, and private key:
 
-```
+```sh
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -49,7 +49,7 @@ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 
 Results:
 
-```
+```sh
 ca-key.pem
 ca.pem
 ```
@@ -62,7 +62,7 @@ In this section you will generate client and server certificates for each Kubern
 
 Generate the `admin` client certificate and private key:
 
-```
+```sh
 cat > admin-csr.json <<EOF
 {
   "CN": "admin",
@@ -92,7 +92,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 admin-key.pem
 admin.pem
 ```
@@ -103,7 +103,7 @@ Kubernetes uses a [special-purpose authorization mode](https://kubernetes.io/doc
 
 Generate a certificate and private key for each Kubernetes worker node:
 
-```
+```sh
 for i in 0 1 2; do
   instance="worker-${i}"
   instance_hostname="ip-10-0-1-2${i}"
@@ -148,7 +148,7 @@ done
 
 Results:
 
-```
+```sh
 worker-0-key.pem
 worker-0.pem
 worker-1-key.pem
@@ -161,7 +161,7 @@ worker-2.pem
 
 Generate the `kube-controller-manager` client certificate and private key:
 
-```
+```sh
 cat > kube-controller-manager-csr.json <<EOF
 {
   "CN": "system:kube-controller-manager",
@@ -191,7 +191,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 kube-controller-manager-key.pem
 kube-controller-manager.pem
 ```
@@ -201,7 +201,7 @@ kube-controller-manager.pem
 
 Generate the `kube-proxy` client certificate and private key:
 
-```
+```sh
 cat > kube-proxy-csr.json <<EOF
 {
   "CN": "system:kube-proxy",
@@ -231,7 +231,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 kube-proxy-key.pem
 kube-proxy.pem
 ```
@@ -240,7 +240,7 @@ kube-proxy.pem
 
 Generate the `kube-scheduler` client certificate and private key:
 
-```
+```sh
 cat > kube-scheduler-csr.json <<EOF
 {
   "CN": "system:kube-scheduler",
@@ -271,7 +271,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 kube-scheduler-key.pem
 kube-scheduler.pem
 ```
@@ -283,7 +283,7 @@ The `kubernetes-the-hard-way` static IP address will be included in the list of 
 
 Generate the Kubernetes API Server certificate and private key:
 
-```
+```sh
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
 cat > kubernetes-csr.json <<EOF
@@ -305,6 +305,13 @@ cat > kubernetes-csr.json <<EOF
 }
 EOF
 
+ensure_var LOAD_BALANCER_ARN
+if [ -z "${KUBERNETES_PUBLIC_ADDRESS}" ]; then
+  KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
+    --load-balancer-arns ${LOAD_BALANCER_ARN} \
+    --output text --query 'LoadBalancers[].DNSName')
+fi
+
 cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
@@ -318,7 +325,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 kubernetes-key.pem
 kubernetes.pem
 ```
@@ -329,7 +336,7 @@ The Kubernetes Controller Manager leverages a key pair to generate and sign serv
 
 Generate the `service-account` certificate and private key:
 
-```
+```sh
 cat > service-account-csr.json <<EOF
 {
   "CN": "service-accounts",
@@ -360,7 +367,7 @@ cfssl gencert \
 
 Results:
 
-```
+```sh
 service-account-key.pem
 service-account.pem
 ```
@@ -370,7 +377,7 @@ service-account.pem
 
 Copy the appropriate certificates and private keys to each worker instance:
 
-```
+```sh
 for instance in worker-0 worker-1 worker-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
@@ -383,7 +390,7 @@ done
 
 Copy the appropriate certificates and private keys to each controller instance:
 
-```
+```sh
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \

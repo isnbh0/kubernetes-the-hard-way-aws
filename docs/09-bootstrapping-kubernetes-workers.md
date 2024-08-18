@@ -6,7 +6,7 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 
 The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `ssh` command. Example:
 
-```
+```sh
 for instance in worker-0 worker-1 worker-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
@@ -27,7 +27,7 @@ Now ssh into each one of the IP addresses received in last step.
 
 Install the OS dependencies:
 
-```
+```sh
 sudo apt-get update
 sudo apt-get -y install socat conntrack ipset
 ```
@@ -40,13 +40,13 @@ By default the kubelet will fail to start if [swap](https://help.ubuntu.com/comm
 
 Verify if swap is enabled:
 
-```
+```sh
 sudo swapon --show
 ```
 
 If output is empthy then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
 
-```
+```sh
 sudo swapoff -a
 ```
 
@@ -54,20 +54,20 @@ sudo swapoff -a
 
 ### Download and Install Worker Binaries
 
-```
+```sh
 wget -q --show-progress --https-only --timestamping \
-  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz \
-  https://github.com/opencontainers/runc/releases/download/v1.0.0-rc93/runc.amd64 \
-  https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz \
-  https://github.com/containerd/containerd/releases/download/v1.4.4/containerd-1.4.4-linux-amd64.tar.gz \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-proxy \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubelet
+  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.31.1/crictl-v1.31.1-linux-arm64.tar.gz \
+  https://github.com/opencontainers/runc/releases/download/v1.1.13/runc.arm64 \
+  https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-arm64-v1.5.1.tgz \
+  https://github.com/containerd/containerd/releases/download/v1.7.20/containerd-1.7.20-linux-arm64.tar.gz \
+  https://dl.k8s.io/v1.31.0/bin/linux/arm64/kubectl \
+  https://dl.k8s.io/v1.31.0/bin/linux/arm64/kube-proxy \
+  https://dl.k8s.io/v1.31.0/bin/linux/arm64/kubelet
 ```
 
 Create the installation directories:
 
-```
+```sh
 sudo mkdir -p \
   /etc/cni/net.d \
   /opt/cni/bin \
@@ -79,12 +79,12 @@ sudo mkdir -p \
 
 Install the worker binaries:
 
-```
+```sh
 mkdir containerd
-tar -xvf crictl-v1.21.0-linux-amd64.tar.gz
-tar -xvf containerd-1.4.4-linux-amd64.tar.gz -C containerd
-sudo tar -xvf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni/bin/
-sudo mv runc.amd64 runc
+tar -xvf crictl-v1.31.1-linux-arm64.tar.gz
+tar -xvf containerd-1.7.20-linux-arm64.tar.gz -C containerd
+sudo tar -xvf cni-plugins-linux-arm64-v1.5.1.tgz -C /opt/cni/bin/
+sudo mv runc.arm64 runc
 chmod +x crictl kubectl kube-proxy kubelet runc 
 sudo mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
 sudo mv containerd/bin/* /bin/
@@ -94,15 +94,16 @@ sudo mv containerd/bin/* /bin/
 
 Retrieve the Pod CIDR range for the current compute instance:
 
-```
-POD_CIDR=$(curl -s http://169.254.169.254/latest/user-data/ \
+```sh
+POD_CIDR=$(TOKEN=`curl -s -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 600"` \
+&& curl -s -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/user-data/ \
   | tr "|" "\n" | grep "^pod-cidr" | cut -d"=" -f2)
 echo "${POD_CIDR}"
 ```
 
 Create the `bridge` network configuration file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 {
     "cniVersion": "0.4.0",
@@ -124,7 +125,7 @@ EOF
 
 Create the `loopback` network configuration file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
 {
     "cniVersion": "0.4.0",
@@ -138,25 +139,29 @@ EOF
 
 Create the `containerd` configuration file:
 
-```
+```sh
 sudo mkdir -p /etc/containerd/
 ```
 
-```
+```sh
 cat << EOF | sudo tee /etc/containerd/config.toml
+version = 2
+
 [plugins]
-  [plugins.cri.containerd]
-    snapshotter = "overlayfs"
-    [plugins.cri.containerd.default_runtime]
-      runtime_type = "io.containerd.runtime.v1.linux"
-      runtime_engine = "/usr/local/bin/runc"
-      runtime_root = ""
+  [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      snapshotter = "overlayfs"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
 EOF
 ```
 
 Create the `containerd.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/containerd.service
 [Unit]
 Description=containerd container runtime
@@ -182,8 +187,9 @@ EOF
 
 ### Configure the Kubelet
 
-```
-WORKER_NAME=$(curl -s http://169.254.169.254/latest/user-data/ \
+```sh
+WORKER_NAME=$(TOKEN=`curl -s -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 600"` \
+&& curl -s -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/user-data/ \
 | tr "|" "\n" | grep "^name" | cut -d"=" -f2)
 echo "${WORKER_NAME}"
 
@@ -194,7 +200,7 @@ sudo mv ca.pem /var/lib/kubernetes/
 
 Create the `kubelet-config.yaml` configuration file:
 
-```
+```sh
 cat <<EOF | sudo tee /var/lib/kubelet/kubelet-config.yaml
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
@@ -215,6 +221,14 @@ resolvConf: "/run/systemd/resolve/resolv.conf"
 runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/${WORKER_NAME}.pem"
 tlsPrivateKeyFile: "/var/lib/kubelet/${WORKER_NAME}-key.pem"
+cgroupRoot: "/"
+cgroupsPerQOS: true
+cgroupDriver: "systemd"
+systemReserved:
+  cpu: 500m
+  memory: 500Mi
+enforceNodeAllocatable:
+  - "pods"
 EOF
 ```
 
@@ -222,7 +236,7 @@ EOF
 
 Create the `kubelet.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
 [Unit]
 Description=Kubernetes Kubelet
@@ -231,17 +245,22 @@ After=containerd.service
 Requires=containerd.service
 
 [Service]
-ExecStart=/usr/local/bin/kubelet \\
-  --config=/var/lib/kubelet/kubelet-config.yaml \\
-  --container-runtime=remote \\
-  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
-  --image-pull-progress-deadline=2m \\
-  --kubeconfig=/var/lib/kubelet/kubeconfig \\
-  --network-plugin=cni \\
-  --register-node=true \\
-  --v=2
+ExecStart=/usr/local/bin/kubelet \
+  --config=/var/lib/kubelet/kubelet-config.yaml \
+  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --register-node=true \
+  --v=2 \
+  --cgroup-driver=systemd
 Restart=on-failure
 RestartSec=5
+Delegate=yes
+CPUAccounting=true
+MemoryAccounting=true
+RuntimeDirectory=kubelet
+RuntimeDirectoryMode=0755
+CPUAccounting=true
+MemoryAccounting=true
 
 [Install]
 WantedBy=multi-user.target
@@ -250,13 +269,13 @@ EOF
 
 ### Configure the Kubernetes Proxy
 
-```
+```sh
 sudo mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 ```
 
 Create the `kube-proxy-config.yaml` configuration file:
 
-```
+```sh
 cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
 kind: KubeProxyConfiguration
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
@@ -269,7 +288,7 @@ EOF
 
 Create the `kube-proxy.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
 [Unit]
 Description=Kubernetes Kube Proxy
@@ -288,7 +307,7 @@ EOF
 
 ### Start the Worker Services
 
-```
+```sh
 sudo systemctl daemon-reload
 sudo systemctl enable containerd kubelet kube-proxy
 sudo systemctl start containerd kubelet kube-proxy
@@ -302,7 +321,7 @@ sudo systemctl start containerd kubelet kube-proxy
 
 List the registered Kubernetes nodes:
 
-```
+```sh
 external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=controller-0" \
     "Name=instance-state-name,Values=running" \

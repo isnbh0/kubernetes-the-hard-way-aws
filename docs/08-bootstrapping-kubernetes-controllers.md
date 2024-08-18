@@ -6,7 +6,7 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 
 The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `ssh` command. Example:
 
-```
+```sh
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
@@ -27,7 +27,7 @@ Now ssh into each one of the IP addresses received in last step.
 
 Create the Kubernetes configuration directory:
 
-```
+```sh
 sudo mkdir -p /etc/kubernetes/config
 ```
 
@@ -35,24 +35,24 @@ sudo mkdir -p /etc/kubernetes/config
 
 Download the official Kubernetes release binaries:
 
-```
+```sh
 wget -q --show-progress --https-only --timestamping \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-controller-manager" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-scheduler" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl"
+  "https://dl.k8s.io/v1.31.0/bin/linux/arm64/kube-apiserver" \
+  "https://dl.k8s.io/v1.31.0/bin/linux/arm64/kube-controller-manager" \
+  "https://dl.k8s.io/v1.31.0/bin/linux/arm64/kube-scheduler" \
+  "https://dl.k8s.io/v1.31.0/bin/linux/arm64/kubectl"
 ```
 
 Install the Kubernetes binaries:
 
-```
+```sh
 chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
 sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
 ```
 
 ### Configure the Kubernetes API Server
 
-```
+```sh
 sudo mkdir -p /var/lib/kubernetes/
 
 sudo mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
@@ -62,13 +62,15 @@ sudo mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
 
 The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance:
 
-```
-INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+```sh
+TOKEN=`curl -s -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 600"` \
+&& INTERNAL_IP=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4`
 ```
 
 Create the `kube-apiserver.service` systemd unit file:
 
-```
+```sh
+ensure_var KUBERNETES_PUBLIC_ADDRESS
 cat <<EOF | sudo tee /etc/systemd/system/kube-apiserver.service
 [Unit]
 Description=Kubernetes API Server
@@ -117,13 +119,13 @@ EOF
 
 Move the `kube-controller-manager` kubeconfig into place:
 
-```
+```sh
 sudo mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
 ```
 
 Create the `kube-controller-manager.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/kube-controller-manager.service
 [Unit]
 Description=Kubernetes Controller Manager
@@ -155,15 +157,15 @@ EOF
 
 Move the `kube-scheduler` kubeconfig into place:
 
-```
+```sh
 sudo mv kube-scheduler.kubeconfig /var/lib/kubernetes/
 ```
 
 Create the `kube-scheduler.yaml` configuration file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/kubernetes/config/kube-scheduler.yaml
-apiVersion: kubescheduler.config.k8s.io/v1beta1
+apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 clientConnection:
   kubeconfig: "/var/lib/kubernetes/kube-scheduler.kubeconfig"
@@ -174,7 +176,7 @@ EOF
 
 Create the `kube-scheduler.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/kube-scheduler.service
 [Unit]
 Description=Kubernetes Scheduler
@@ -194,7 +196,7 @@ EOF
 
 ### Start the Controller Services
 
-```
+```sh
 sudo systemctl daemon-reload
 sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
@@ -204,11 +206,11 @@ sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 ### Verification
 
-```
+```sh
 kubectl cluster-info --kubeconfig admin.kubeconfig
 ```
 
-```
+```sh
 Kubernetes control plane is running at https://127.0.0.1:6443
 ```
 
@@ -221,7 +223,7 @@ be able to resolve the worker hostnames.  This is not set up by default in
 AWS.  The workaround is to add manual host entries on each of the controller
 nodes with this command:
 
-```
+```sh
 cat <<EOF | sudo tee -a /etc/hosts
 10.0.1.20 ip-10-0-1-20
 10.0.1.21 ip-10-0-1-21
@@ -240,7 +242,7 @@ In this section you will configure RBAC permissions to allow the Kubernetes API 
 
 The commands in this section will effect the entire cluster and only need to be run once from one of the controller nodes.
 
-```
+```sh
 external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=controller-0" \
     "Name=instance-state-name,Values=running" \
@@ -251,7 +253,7 @@ ssh -i kubernetes.id_rsa ubuntu@${external_ip}
 
 Create the `system:kube-apiserver-to-kubelet` [ClusterRole](https://kubernetes.io/docs/admin/authorization/rbac/#role-and-clusterrole) with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
 
-```
+```sh
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -279,7 +281,7 @@ The Kubernetes API Server authenticates to the Kubelet as the `kubernetes` user 
 
 Bind the `system:kube-apiserver-to-kubelet` ClusterRole to the `kubernetes` user:
 
-```
+```sh
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -303,7 +305,7 @@ EOF
 
 Retrieve the `kubernetes-the-hard-way` Load Balancer address:
 
-```
+```sh
 KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
   --load-balancer-arns ${LOAD_BALANCER_ARN} \
   --output text --query 'LoadBalancers[].DNSName')
@@ -311,23 +313,23 @@ KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
 
 Make a HTTP request for the Kubernetes version info:
 
-```
-curl --cacert ca.pem https://${KUBERNETES_PUBLIC_ADDRESS}/version
+```sh
+curl --cacert ca.pem https://$KUBERNETES_PUBLIC_ADDRESS/version
 ```
 
 > output
 
-```
+```json
 {
   "major": "1",
-  "minor": "21",
-  "gitVersion": "v1.21.0",
-  "gitCommit": "cb303e613a121a29364f75cc67d3d580833a7479",
+  "minor": "31",
+  "gitVersion": "v1.31.0",
+  "gitCommit": "9edcffcde5595e8a5b1a35f88c421764e575afce",
   "gitTreeState": "clean",
-  "buildDate": "2021-04-08T16:25:06Z",
-  "goVersion": "go1.16.1",
+  "buildDate": "2024-08-13T07:28:49Z",
+  "goVersion": "go1.22.5",
   "compiler": "gc",
-  "platform": "linux/amd64"
+  "platform": "linux/arm64"
 }
 ```
 

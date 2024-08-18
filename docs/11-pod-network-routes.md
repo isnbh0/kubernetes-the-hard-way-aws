@@ -8,36 +8,43 @@ In this lab you will create a route for each worker node that maps the node's Po
 
 ## The Routing Table and routes
 
-In this section you will gather the information required to create routes in the `kubernetes-the-hard-way` VPC network and use that to create route table entries. 
+In this section you will gather the information required to create routes in the `kubernetes-the-hard-way` VPC network and use that to create route table entries.
 
 In production workloads this functionality will be provided by CNI plugins like flannel, calico, amazon-vpc-cni-k8s. Doing this by hand makes it easier to understand what those plugins do behind the scenes.
 
 Print the internal IP address and Pod CIDR range for each worker instance and create route table entries:
 
 ```sh
+ensure_var ROUTE_TABLE_ID
 for instance in worker-0 worker-1 worker-2; do
   instance_id_ip="$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=${instance}" \
+    --filters "Name=tag:Name,Values=${instance}" "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].[InstanceId,PrivateIpAddress]')"
-  instance_id="$(echo "${instance_id_ip}" | cut -f1)"
-  instance_ip="$(echo "${instance_id_ip}" | cut -f2)"
-  pod_cidr="$(aws ec2 describe-instance-attribute \
-    --instance-id "${instance_id}" \
-    --attribute userData \
-    --output text --query 'UserData.Value' \
-    | base64 --decode | tr "|" "\n" | grep "^pod-cidr" | cut -d'=' -f2)"
-  echo "${instance_ip} ${pod_cidr}"
 
-  aws ec2 create-route \
-    --route-table-id "${ROUTE_TABLE_ID}" \
-    --destination-cidr-block "${pod_cidr}" \
-    --instance-id "${instance_id}"
+  # Check if the instance is running
+  if [ -n "$instance_id_ip" ]; then
+    instance_id="$(echo "${instance_id_ip}" | cut -f1)"
+    instance_ip="$(echo "${instance_id_ip}" | cut -f2)"
+    pod_cidr="$(aws ec2 describe-instance-attribute \
+      --instance-id "${instance_id}" \
+      --attribute userData \
+      --output text --query 'UserData.Value' \
+      | base64 --decode | tr "|" "\n" | grep "^pod-cidr" | cut -d'=' -f2)"
+    echo "${instance_ip} ${pod_cidr}"
+
+    aws ec2 create-route \
+      --route-table-id "${ROUTE_TABLE_ID}" \
+      --destination-cidr-block "${pod_cidr}" \
+      --instance-id "${instance_id}"
+  else
+    echo "Instance ${instance} is not in the running state. Skipping."
+  fi
 done
 ```
 
 > output
 
-```
+```sh
 10.0.1.20 10.200.0.0/24
 {
     "Return": true
@@ -57,6 +64,7 @@ done
 Validate network routes for each worker instance:
 
 ```sh
+ensure_var ROUTE_TABLE_ID
 aws ec2 describe-route-tables \
   --route-table-ids "${ROUTE_TABLE_ID}" \
   --query 'RouteTables[].Routes'
@@ -64,7 +72,7 @@ aws ec2 describe-route-tables \
 
 > output
 
-```
+```sh
 [
     [
         {

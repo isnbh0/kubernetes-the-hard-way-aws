@@ -11,62 +11,47 @@ Download and install `cfssl` and `cfssljson`:
 
 ### OS X
 
-```
-curl -o cfssl https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssl_1.6.4_linux_amd64
-curl -o cfssljson https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssljson_1.6.4_linux_amd64
-```
-
-```
-chmod +x cfssl cfssljson
-```
-
-```
-sudo mv cfssl cfssljson /usr/local/bin/
-```
-
-Some OS X users may experience problems using the pre-built binaries in which case [Homebrew](https://brew.sh) might be a better option:
-
-```
+```shell
 brew install cfssl
 ```
 
 ### Linux
 
-```
+```shell
 wget -q --show-progress --https-only --timestamping \
-  https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.4.1/linux/cfssl \
-  https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.4.1/linux/cfssljson
+  https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.6.5/linux/cfssl \
+  https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/1.6.5/linux/cfssljson
 ```
 
-```
+```shell
 chmod +x cfssl cfssljson
 ```
 
-```
+```shell
 sudo mv cfssl cfssljson /usr/local/bin/
 ```
 
 ### Verification
 
-Verify `cfssl` and `cfssljson` version 1.4.1 or higher is installed:
+Verify `cfssl` and `cfssljson` version 1.6.5 or higher is installed:
 
-```
+```shell
 cfssl version
 ```
 
 > output
 
 ```
-Version: 1.4.1
-Runtime: go1.12.12
+Version: 1.6.5
+Runtime: go1.22.0
 ```
 
-```
+```shell
 cfssljson --version
 ```
 ```
-Version: 1.4.1
-Runtime: go1.12.12
+Version: 1.6.5
+Runtime: go1.22.0
 ```
 
 ## Install kubectl
@@ -75,22 +60,14 @@ The `kubectl` command line utility is used to interact with the Kubernetes API S
 
 ### OS X
 
-```
-curl -o kubectl https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
-```
-
-```
-chmod +x kubectl
-```
-
-```
-sudo mv kubectl /usr/local/bin/
+```shell
+brew install kubectl
 ```
 
 ### Linux
 
-```
-wget https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+```shell
+wget https://storage.googleapis.com/kubernetes-release/release/v1.31.0/bin/linux/amd64/kubectl
 ```
 
 ```
@@ -103,7 +80,7 @@ sudo mv kubectl /usr/local/bin/
 
 ### Verification
 
-Verify `kubectl` version 1.21.0 or higher is installed:
+Verify `kubectl` version 1.31.0 or higher is installed:
 
 ```
 kubectl version --client
@@ -112,7 +89,8 @@ kubectl version --client
 > output
 
 ```
-Client Version: version.Info{Major:"1", Minor:"21", GitVersion:"v1.21.0", GitCommit:"cb303e613a121a29364f75cc67d3d580833a7479", GitTreeState:"clean", BuildDate:"2021-04-08T16:31:21Z", GoVersion:"go1.16.1", Compiler:"gc", Platform:"linux/amd64"}
+Client Version: v1.31.0
+Kustomize Version: v5.4.2
 ```
 
 Next: [Provisioning Compute Resources](03-compute-resources.md)

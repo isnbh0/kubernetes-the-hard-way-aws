@@ -12,7 +12,8 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 
 Retrieve the `kubernetes-the-hard-way` DNS address:
 
-```
+```sh
+ensure_var LOAD_BALANCER_ARN
 KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
   --load-balancer-arns ${LOAD_BALANCER_ARN} \
   --output text --query 'LoadBalancers[0].DNSName')
@@ -26,7 +27,7 @@ When generating kubeconfig files for Kubelets the client certificate matching th
 
 Generate a kubeconfig file for each worker node:
 
-```
+```sh
 for instance in worker-0 worker-1 worker-2; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
@@ -51,7 +52,7 @@ done
 
 Results:
 
-```
+```sh
 worker-0.kubeconfig
 worker-1.kubeconfig
 worker-2.kubeconfig
@@ -61,7 +62,7 @@ worker-2.kubeconfig
 
 Generate a kubeconfig file for the `kube-proxy` service:
 
-```
+```sh
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -84,7 +85,7 @@ kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
 
 Results:
 
-```
+```sh
 kube-proxy.kubeconfig
 ```
 
@@ -92,7 +93,7 @@ kube-proxy.kubeconfig
 
 Generate a kubeconfig file for the `kube-controller-manager` service:
 
-```
+```sh
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -115,7 +116,7 @@ kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconf
 
 Results:
 
-```
+```sh
 kube-controller-manager.kubeconfig
 ```
 
@@ -124,7 +125,7 @@ kube-controller-manager.kubeconfig
 
 Generate a kubeconfig file for the `kube-scheduler` service:
 
-```
+```sh
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -147,7 +148,7 @@ kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
 
 Results:
 
-```
+```sh
 kube-scheduler.kubeconfig
 ```
 
@@ -155,7 +156,7 @@ kube-scheduler.kubeconfig
 
 Generate a kubeconfig file for the `admin` user:
 
-```
+```sh
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -178,7 +179,7 @@ kubectl config use-context default --kubeconfig=admin.kubeconfig
 
 Results:
 
-```
+```sh
 admin.kubeconfig
 ```
 
@@ -189,7 +190,7 @@ admin.kubeconfig
 
 Copy the appropriate `kubelet` and `kube-proxy` kubeconfig files to each worker instance:
 
-```
+```sh
 for instance in worker-0 worker-1 worker-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
@@ -203,7 +204,7 @@ done
 
 Copy the appropriate `kube-controller-manager` and `kube-scheduler` kubeconfig files to each controller instance:
 
-```
+```sh
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \

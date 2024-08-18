@@ -8,7 +8,7 @@ In this lab you will generate an encryption key and an [encryption config](https
 
 Generate an encryption key:
 
-```
+```sh
 ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
 ```
 
@@ -16,7 +16,7 @@ ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
 
 Create the `encryption-config.yaml` encryption config file:
 
-```
+```sh
 cat > encryption-config.yaml <<EOF
 kind: EncryptionConfig
 apiVersion: v1
@@ -34,13 +34,13 @@ EOF
 
 Copy the `encryption-config.yaml` encryption config file to each controller instance:
 
-```
+```sh
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
-  
+
   scp -i kubernetes.id_rsa encryption-config.yaml ubuntu@${external_ip}:~/
 done
 ```

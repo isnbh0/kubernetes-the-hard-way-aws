@@ -1,10 +1,9 @@
 # About
 
-This is a fork of awesome [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) by Kelsey Hightower and is geared towards using it on AWS. Also thanks to [@slawekzachcial](https://github.com/slawekzachcial) for his [work](https://github.com/slawekzachcial/kubernetes-the-hard-way-aws) that made this easier.
+This is a fork of the awesome [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) by Kelsey Hightower and is geared towards using it on AWS. Also thanks to [@slawekzachcial](https://github.com/slawekzachcial) for his [work](https://github.com/slawekzachcial/kubernetes-the-hard-way-aws) that made this easier, and further thanks to [@prabhatsharma](https://github.com/prabhatsharma) for his [work](https://github.com/prabhatsharma/kubernetes-the-hard-way-aws) that made this even easier. (Yes, this is a fork of a fork of a fork.)
 
-There are currently no tool upgrades as compared to the original.
 
-# Kubernetes The Hard Way
+# Kubernetes The Hard Way (AWS 2024-08)
 
 This tutorial walks you through setting up Kubernetes the hard way. This guide is not for people looking for a fully automated command to bring up a Kubernetes cluster. If that's you then check out [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine), [AWS Elastic Container Service for Kubernetes](https://aws.amazon.com/eks/) or the [Getting Started Guides](https://kubernetes.io/docs/setup).
 
@@ -20,15 +19,19 @@ The target audience for this tutorial is someone planning to support a productio
 
 Kubernetes The Hard Way guides you through bootstrapping a highly available Kubernetes cluster with end-to-end encryption between components and RBAC authentication.
 
-* [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.0
-* [containerd](https://github.com/containerd/containerd) v1.4.4
-* [coredns](https://github.com/coredns/coredns) v1.8.3
-* [cni](https://github.com/containernetworking/cni) v0.9.1
-* [etcd](https://github.com/etcd-io/etcd) v3.4.15
+* [kubernetes](https://github.com/kubernetes/kubernetes) v1.31.0
+* [containerd](https://github.com/containerd/containerd) v1.7.20
+* [coredns](https://github.com/coredns/coredns) v1.32.0
+* [cni](https://github.com/containernetworking/cni) v1.5.1
+* [etcd](https://github.com/etcd-io/etcd) v3.5.15
 
 ## Labs
 
-This tutorial assumes you have access to the [Amazon Web Service](https://aws.amazon.com/). If you are looking for GCP version of this guide then look at : [https://github.com/kelseyhightower/kubernetes-the-hard-way](https://github.com/kelseyhightower/kubernetes-the-hard-way).
+This tutorial is a fork of the official [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) guide, tailored for use on AWS.
+
+Please note that this fork is of an older version of the original guide, and while it has been upgraded to work with the latest versions of the referenced tools(as of 2024-08), its content has diverged somewhat from the original guide.
+
+Also, as I prepared this repository while I was myself studying the material, the quality of the added code in this fork may not be up to standard. Please expect some rough edges and hopefully some fixes in the future.
 
 * [Prerequisites](docs/01-prerequisites.md)
 * [Installing the Client Tools](docs/02-client-tools.md)

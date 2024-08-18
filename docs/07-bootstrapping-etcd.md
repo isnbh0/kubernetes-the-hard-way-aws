@@ -6,7 +6,7 @@ Kubernetes components are stateless and store cluster state in [etcd](https://gi
 
 The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `ssh` command. Example:
 
-```
+```sh
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
@@ -29,21 +29,21 @@ Now ssh into each one of the IP addresses received in last step.
 
 Download the official etcd release binaries from the [etcd](https://github.com/etcd-io/etcd) GitHub project:
 
-```
+```sh
 wget -q --show-progress --https-only --timestamping \
-  "https://github.com/etcd-io/etcd/releases/download/v3.4.15/etcd-v3.4.15-linux-amd64.tar.gz"
+  "https://github.com/etcd-io/etcd/releases/download/v3.5.15/etcd-v3.5.15-linux-arm64.tar.gz"
 ```
 
 Extract and install the `etcd` server and the `etcdctl` command line utility:
 
-```
-tar -xvf etcd-v3.4.15-linux-amd64.tar.gz
-sudo mv etcd-v3.4.15-linux-amd64/etcd* /usr/local/bin/
+```sh
+tar -xvf etcd-v3.5.15-linux-arm64.tar.gz
+sudo mv etcd-v3.5.15-linux-arm64/etcd* /usr/local/bin/
 ```
 
 ### Configure the etcd Server
 
-```
+```sh
 sudo mkdir -p /etc/etcd /var/lib/etcd
 sudo chmod 700 /var/lib/etcd
 sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
@@ -51,21 +51,23 @@ sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
 The instance internal IP address will be used to serve client requests and communicate with etcd cluster peers. Retrieve the internal IP address for the current compute instance:
 
-```
-INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+```sh
+TOKEN=`curl -s -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 600"` \
+&& INTERNAL_IP=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4`
+echo "${INTERNAL_IP}"
 ```
 
 Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
 
-```
-ETCD_NAME=$(curl -s http://169.254.169.254/latest/user-data/ \
+```sh
+ETCD_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/user-data/ \
   | tr "|" "\n" | grep "^name" | cut -d"=" -f2)
 echo "${ETCD_NAME}"
 ```
 
 Create the `etcd.service` systemd unit file:
 
-```
+```sh
 cat <<EOF | sudo tee /etc/systemd/system/etcd.service
 [Unit]
 Description=etcd
@@ -101,7 +103,7 @@ EOF
 
 ### Start the etcd Server
 
-```
+```sh
 sudo systemctl daemon-reload
 sudo systemctl enable etcd
 sudo systemctl start etcd
@@ -113,7 +115,7 @@ sudo systemctl start etcd
 
 List the etcd cluster members:
 
-```
+```sh
 sudo ETCDCTL_API=3 etcdctl member list \
   --endpoints=https://127.0.0.1:2379 \
   --cacert=/etc/etcd/ca.pem \
@@ -123,7 +125,7 @@ sudo ETCDCTL_API=3 etcdctl member list \
 
 > output
 
-```
+```sh
 bbeedf10f5bbaa0c, started, controller-2, https://10.0.1.12:2380, https://10.0.1.12:2379, false
 f9b0e395cb8278dc, started, controller-0, https://10.0.1.10:2380, https://10.0.1.10:2379, false
 eecdfcb7e79fc5dd, started, controller-1, https://10.0.1.11:2380, https://10.0.1.11:2379, false
